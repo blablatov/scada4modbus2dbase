@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -90,8 +89,7 @@ func BenchmarkReadInterface(b *testing.B) {
 		var d modbus2tcp.Modbuser = rd
 		result, err := d.ReadCoils()
 		if err != nil {
-			fmt.Printf("%#v\n", err)
-			os.Exit(1)
+			log.Fatalf("Error of method: %v", err)
 		}
 		fmt.Println("Result of request via interface method ReadCoils: ", result)
 	}
@@ -129,17 +127,21 @@ func BenchmarkRWGoroutines(b *testing.B) {
 		cr := make(chan []byte)
 		// Synchronization of goroutines. Синхронизация горутин.
 		var wgr sync.WaitGroup
-		wgr.Add(2) // Counter of goroutines. Значение счетчика горутин.
+		wgr.Add(1) // Counter of goroutines. Значение счетчика горутин.
 		go gmodbus2tcp.GReadCoils(wgr, methodType, gd, cr)
-		go gmodbus2tcp.GWriteSingleCoil(wgr, wmethodType, wdb, wm)
 		// Getting data from goroutine. Получение данных из канала горутины.
 		log.Println("\nResult of request via method ReadCoils of goroutine: ", <-cr)
+		go func() {
+			wgr.Wait()
+			close(cr)
+		}()
+		wgr.Add(1)
+		go gmodbus2tcp.GWriteSingleCoil(wgr, wmethodType, wdb, wm)
 		// Getting data from goroutine. Получение данных из канала горутины.
 		log.Println("\nResult of request via method WriteSingleCoil of goroutine: ", <-wm)
 		// Wait of counter. Ожидание счетчика.
 		go func() {
 			wgr.Wait()
-			close(cr)
 			close(wm)
 		}()
 	}

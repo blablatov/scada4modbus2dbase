@@ -79,10 +79,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			// Calling an interface method.
 			// Вызов метода WriteSingleCoil интерфейса.
 			var d modbus2tcp.Modbuser = md
-			reswrite, err := d.WriteSingleCoil()
-			if err != nil {
-				log.Fatalf("Error of method: %v", err)
-			}
+			reswrite := d.WriteSingleCoil()
 			fmt.Println("Result of request via interface method WriteSingleCoil: ", reswrite)
 			secs := time.Since(start).Seconds()
 			fmt.Printf("%.2fs Request execution time via method of interface\n", secs)
@@ -155,10 +152,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			// Calling an interface method.
 			// Вызов метода SendMongo интерфейса.
 			var s modbus2mgo.ModbusMonger = dm
-			resreq, err := s.SendMongo(DsnMongo)
-			if err != nil {
-				log.Fatalf("Error of method: %v", err)
-			}
+			resreq := s.SendMongo(DsnMongo)
 			fmt.Println("Result of request via interface method ReadCoils: ", resreq)
 			secs4 := time.Since(start4).Seconds()
 			fmt.Printf("%.2fs Request execution time via method SendMongo of interface\n", secs4)
