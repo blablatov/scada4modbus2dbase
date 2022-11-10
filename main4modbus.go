@@ -48,40 +48,33 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// Парсинг строк запроса к modbus-slave устройству.
 	sd := &DataType{}
 	counts := make(map[string]int)
+	//Slice for save all keys from mapping. Срез для хранения всех ключей мапы.
 	datakeys := make([]string, 0, len(counts))
 	for _, line := range strings.Split(string(r.URL.Path), ":") {
 		counts[line]++
-		log.Println(line)
+		log.Println(line) // Checks data of mapping.
 	}
-	for sdata, _ := range counts {
-		if sdata != "" {
-			if sd.protocolType == "" {
-				sd.protocolType = sdata
-			} else {
-				if sd.methodType == "" {
-					sd.methodType = sdata
-				} else {
-					sd.dataType = sdata
-				}
-			}
-		}
-	}
+	// Sorts keys to list and to sets values in order.
+	// Сортировка ключей для перечисления и присваивания значений по порядку.
 	for countkeys := range counts {
 		datakeys = append(datakeys, countkeys)
 	}
 	sort.Strings(datakeys)
 	for _, countkeys := range datakeys {
-		fmt.Printf("Countkeys%v\ncounts%v\n", countkeys, counts[countkeys])
+		fmt.Printf("\nCountkeys: %v\nCounts: %v\n", countkeys, counts[countkeys])
+		if countkeys != "" {
+			if sd.protocolType == "" {
+				sd.protocolType = countkeys
+			} else {
+				if sd.dataType == "" {
+					sd.dataType = countkeys
+				} else {
+					sd.methodType = countkeys
+				}
+			}
+		}
 	}
-
-	/*i := strings.Index(r.URL.Path, ":") // get index of symbol ":". Получить индекс первого символа ":" строки
-	sd := &DataType{}                   // get types of structure. Получить и присвоить значения типам структуры.
-	sd.protocolType = r.URL.Path[:i]    // get slice of string before symbol ":". Получить значение до первого символа ":".
-	substr := r.URL.Path[i+1:]          // get slice of string after symbol ":". Получить подстроку substr после первого символа ":".
-
-	t := strings.Index(substr, ":") // get index symbol ":" in substr. Получить индекс 1-го символа ":" в подстроке substr.
-	sd.methodType = substr[:t]      // get slice of string before symbol ":". Получить значение до первого символа ":" substr.*/
-	fmt.Println("Protocol type check:", strings.TrimPrefix(sd.protocolType, "/"))
+	fmt.Println("\nProtocol type check:", strings.TrimPrefix(sd.protocolType, "/"))
 
 	switch sd.protocolType {
 	// Switching type of modbus tcp. Переключатель на modbus tcp.
