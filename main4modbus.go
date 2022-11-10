@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,15 +42,46 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "URL.Path = %q\n", r.URL.Path)
 	fmt.Fprintf(w, "Server is listening on 8443. Go to https://127.0.0.1:8443")
 
-	// Formating data of structure. Заполнение структуры. //TODO slice.
-	i := strings.Index(r.URL.Path, ":") // get index of symbol ":". Получить индекс первого символа ":" строки
+	//TODO slice.
+	////////////////////////////////////////////////////////////////////
+	// Parsing strings of input for requst to modbus a slave device.
+	// Парсинг строк запроса к modbus-slave устройству.
+	sd := &DataType{}
+	counts := make(map[string]int)
+	datakeys := make([]string, 0, len(counts))
+	for _, line := range strings.Split(string(r.URL.Path), ":") {
+		counts[line]++
+		log.Println(line)
+	}
+	for sdata, _ := range counts {
+		if sdata != "" {
+			if sd.protocolType == "" {
+				sd.protocolType = sdata
+			} else {
+				if sd.methodType == "" {
+					sd.methodType = sdata
+				} else {
+					sd.dataType = sdata
+				}
+			}
+		}
+	}
+	for countkeys := range counts {
+		datakeys = append(datakeys, countkeys)
+	}
+	sort.Strings(datakeys)
+	for _, countkeys := range datakeys {
+		fmt.Printf("Countkeys%v\ncounts%v\n", countkeys, counts[countkeys])
+	}
+
+	/*i := strings.Index(r.URL.Path, ":") // get index of symbol ":". Получить индекс первого символа ":" строки
 	sd := &DataType{}                   // get types of structure. Получить и присвоить значения типам структуры.
 	sd.protocolType = r.URL.Path[:i]    // get slice of string before symbol ":". Получить значение до первого символа ":".
 	substr := r.URL.Path[i+1:]          // get slice of string after symbol ":". Получить подстроку substr после первого символа ":".
 
 	t := strings.Index(substr, ":") // get index symbol ":" in substr. Получить индекс 1-го символа ":" в подстроке substr.
-	sd.methodType = substr[:t]      // get slice of string before symbol ":". Получить значение до первого символа ":" substr.
-	fmt.Println("Protocol type:", strings.TrimPrefix(sd.protocolType, "/"))
+	sd.methodType = substr[:t]      // get slice of string before symbol ":". Получить значение до первого символа ":" substr.*/
+	fmt.Println("Protocol type check:", strings.TrimPrefix(sd.protocolType, "/"))
 
 	switch sd.protocolType {
 	// Switching type of modbus tcp. Переключатель на modbus tcp.
@@ -60,7 +92,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			////////////////////////////////////////////////////////////////////
 			// Sending data on Modbus via method WriteSingleCoil of interface.
 			// Отправка данных через вызов метода WriteSingleCoil интерфейса.
-			sd.dataType = substr[t+1:] // get slice of string after symbol ":". Получить значение после первого символа ":" substr.
+			//sd.dataType = substr[t+1:] // get slice of string after symbol ":". Получить значение после первого символа ":" substr.
 			var wdb bool
 			switch sd.dataType {
 			case "true":
@@ -105,7 +137,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			////////////////////////////////////////////////////////////////////
 			// Reading data on Modbus via method ReadCoils of interface.
 			// Чтение данных через вызов метода ReadCoils интерфейса.
-			sd.dataType = substr[t+1:] // get slice of string after symbol ":". Получить значение после первого символа ":" substr.
+			//sd.dataType = substr[t+1:] // get slice of string after symbol ":". Получить значение после первого символа ":" substr.
 			dt, err := strconv.ParseUint(sd.dataType, 10, 64)
 			if err != nil {
 				fmt.Println(err.Error())
@@ -160,7 +192,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			////////////////////////////////////////////////////////////////////
 			// Read data method GReadCoils via goroutine.
 			// Чтение данных методом GReadCoils через горутину.
-			sd.dataType = substr[t+1:] // get slice of string after symbol ":". Получить значение после первого символа ":" substr.
+			//sd.dataType = substr[t+1:] // get slice of string after symbol ":". Получить значение после первого символа ":" substr.
 			dg, err := strconv.ParseUint(sd.dataType, 10, 64)
 			if err != nil {
 				fmt.Println(err.Error())
