@@ -60,16 +60,12 @@ func TestStrings(t *testing.T) {
 	}
 }
 
-func TestFormatStrings(t *testing.T) {
-	strpars := "modbus_tcp:WriteSingleCoil:true"
-	i := strings.Index(strpars, ":") // get index of symbol ":". Получить индекс первого символа ":" в подстроке strpar
-	protocolType := strpars[:i]      // Get slice of string before symbol ":". Получить строку до ":" в подстроке strpar.
-	substr := strpars[i+1:]          // Get slice of string after symbol ":". Получить строку после ":" в подстроке strpar.
-	// Получить срез от 1-го символа ":"
-	v := strings.Index(substr, ":") // get index of symbol ":". Получить индекс первого символа ":" в подстроке substr
-	writeMethodType := substr[:v]   // Get slice of string before symbol ":". Получить строку до ":" в подстроке substr.
-	writeDataType := substr[v+1:]   //Get slice of string after symbol ":". Получить строку после ":" в подстроке substr.
-	fmt.Println("\nProtocol type:", protocolType, "\nMethod type:", writeMethodType, "\nData type:", writeDataType)
+func TestSplit(t *testing.T) {
+	s, sep := "a:b:c", ":"
+	durl := strings.Split(s, sep)
+	if got, want := len(durl), 3; got != want {
+		t.Errorf("Split (%q%q) возвращает %d слов, а требуется %d", s, sep, got, want)
+	}
 }
 
 func BenchmarkReadInterface(b *testing.B) {
