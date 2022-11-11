@@ -28,6 +28,12 @@ type DataType struct {
 	rdataType    uint16
 }
 
+// Anonymous field. Composition for secure access to types and methods of the modbus2tcp package.
+// Анонимное поле. Композиция для безопасного доступа к типам и методам пакета modbus2tcp.
+type embtypes struct {
+	modbus2tcp.ModbusData
+}
+
 const (
 	DsnMongo = "mongodb://localhost:27017/testdb"
 )
@@ -43,7 +49,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "URL.Path = %q\n", r.URL.Path)
 	fmt.Fprintf(w, "Server is listening on 8443. Go to https://127.0.0.1:8443")
 
-	//TODO slice.
 	////////////////////////////////////////////////////////////////////
 	// Parsing strings of input for requst to modbus a slave device.
 	// Парсинг строк запроса к modbus-slave устройству.
@@ -144,12 +149,28 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				fmt.Println(err.Error())
 			}
+
+			// Option one.
+			// Calling an interface method via struct embedding.
+			// Вызов метода ReadCoils интерфейса, через встроенную структуру.
+			start3 := time.Now()
+			var w embtypes
+			w.ReadCoilsData = uint16(dt)
+			w.SwitchMethodType = sd.methodType
+			fmt.Println(w)
+
+			result, err := embtypes.ReadCoils(w)
+			if err != nil {
+				log.Fatalf("Error of method: %v", err)
+			}
+			fmt.Println("Result of request via interface method: ", result)
+
+			// Option two.
 			// Formating data of structure Modbus. Заполнение структуры.
-			rd := modbus2tcp.ModbusData{
+			/*rd := modbus2tcp.ModbusData{
 				SwitchMethodType: sd.methodType,
 				ReadCoilsData:    uint16(dt),
 			}
-			start3 := time.Now()
 			// Calling an interface method.
 			// Вызов метода ReadCoils интерфейса.
 			var d modbus2tcp.Modbuser = rd
@@ -157,7 +178,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Fatalf("Error of method: %v", err)
 			}
-			fmt.Println("Result of request via interface method ReadCoils: ", result)
+			fmt.Println("Result of request via interface method ReadCoils: ", result)*/
 
 			strchat := intsToString(result) // Call of func for convert to string. Преобразование в строку.
 			cd := chatbotclient.ChatData{
@@ -173,7 +194,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			///////////////////////////////////////
 			// Writting data of modbus to MongoDB via method SendMongo of interface.
 			// Запись данных Modbus в MongoDB через метод SendMongo интерфейса.
+			p := recover()
 			if len(result) == 0 {
+				log.Println("Panic, internal error, data of answed not got. recover()")
+				panic(p)
 				fmt.Println(err.Error())
 			}
 			stres := intsToString(result) // Call of func for convert to string. Преобразование в строку.
