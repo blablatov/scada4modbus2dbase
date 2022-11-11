@@ -21,6 +21,7 @@ import (
 )
 
 type DataType struct {
+	mu           sync.Mutex
 	protocolType string
 	methodType   string
 	dataType     string
@@ -64,16 +65,26 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("\nCountkeys: %v\nCounts: %v\n", countkeys, counts[countkeys])
 		if countkeys != "" {
 			if sd.protocolType == "" {
+				sd.mu.Lock()
 				sd.protocolType = countkeys
+				sd.mu.Unlock()
 			} else {
 				if sd.dataType == "" {
+					sd.mu.Lock()
 					sd.dataType = countkeys
+					sd.mu.Unlock()
 				} else {
+					sd.mu.Lock()
 					sd.methodType = countkeys
+					sd.mu.Unlock()
 				}
 			}
 		}
 	}
+	// Output for test. Тестовый вывод данных.
+	log.Println("protocolType: ", sd.protocolType)
+	log.Println("dataType: ", sd.dataType)
+	log.Println("methodType: ", sd.methodType)
 	fmt.Println("\nProtocol type check:", strings.TrimPrefix(sd.protocolType, "/"))
 
 	switch sd.protocolType {
