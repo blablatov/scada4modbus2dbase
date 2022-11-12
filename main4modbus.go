@@ -3,10 +3,12 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,6 +28,7 @@ type DataType struct {
 	methodType   string
 	dataType     string
 	rdataType    uint16
+	DsnMongo     string
 }
 
 // Anonymous field. Composition for secure access to types and methods of the modbus2tcp package.
@@ -34,9 +37,14 @@ type embtypes struct {
 	modbus2tcp.ModbusData
 }
 
-const (
+type embmongo struct {
+	modbus2mgo.ModbusMongo
+}
+
+// Data DSN is file the ./mongo.conf
+/*const (
 	DsnMongo = "mongodb://localhost:27017/testdb"
-)
+)*/
 
 func main() {
 	http.HandleFunc("/", handler)
@@ -143,16 +151,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			close(cw)
 		case "ReadCoils":
 			////////////////////////////////////////////////////////////////////
-			// Reading data on Modbus via method ReadCoils of interface.
-			// Чтение данных через вызов метода ReadCoils интерфейса.
+			// Reading data on Modbus via method ReadCoils of struct embedding.
+			// Чтение данных через вызов метода ReadCoils через встроенную структуру.
 			dt, err := strconv.ParseUint(sd.dataType, 10, 64)
 			if err != nil {
 				fmt.Println(err.Error())
 			}
-
 			// Option one.
 			// Calling an interface method via struct embedding.
-			// Вызов метода ReadCoils интерфейса, через встроенную структуру.
+			// Вызов метода ReadCoils, через встроенную структуру.
 			start3 := time.Now()
 			var w embtypes
 			w.ReadCoilsData = uint16(dt)
@@ -165,22 +172,25 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Println("Result of request via interface method: ", result)
 
+			////////////////////////////////////////////////////////////////////
+			// Reading data on Modbus via method ReadCoils of interface.
+			// Чтение данных через вызов метода ReadCoils интерфейса.
 			// Option two.
 			// Formating data of structure Modbus. Заполнение структуры.
-			/*rd := modbus2tcp.ModbusData{
+			rd := modbus2tcp.ModbusData{
 				SwitchMethodType: sd.methodType,
 				ReadCoilsData:    uint16(dt),
 			}
 			// Calling an interface method.
 			// Вызов метода ReadCoils интерфейса.
 			var d modbus2tcp.Modbuser = rd
-			result, err := d.ReadCoils()
+			resint, err := d.ReadCoils()
 			if err != nil {
 				log.Fatalf("Error of method: %v", err)
 			}
-			fmt.Println("Result of request via interface method ReadCoils: ", result)*/
+			fmt.Println("Result of request via interface method ReadCoils: ", resint)
 
-			strchat := intsToString(result) // Call of func for convert to string. Преобразование в строку.
+			strchat := intsToString(resint) // Call of func for convert to string. Преобразование в строку.
 			cd := chatbotclient.ChatData{
 				ModbusData: strchat,
 			}
@@ -192,8 +202,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("%.2fs Request execution time via method ReadCoils of interface\n", secs3)
 
 			///////////////////////////////////////
-			// Writting data of modbus to MongoDB via method SendMongo of interface.
-			// Запись данных Modbus в MongoDB через метод SendMongo интерфейса.
+			// Writting data of modbus to MongoDB, calls a SendMongo method via struct embedding.
+			// Запись данных Modbus в MongoDB методом SendMongo, вызов через встроенную структуру.
 			p := recover()
 			if len(result) == 0 {
 				log.Println("Panic, internal error, data of answed not got. recover()")
@@ -201,19 +211,51 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				fmt.Println(err.Error())
 			}
 			stres := intsToString(result) // Call of func for convert to string. Преобразование в строку.
+			// Option one.
+			// Calling an method ReadCoils via struct embedding.
+			// Вызов метода ReadCoils, через встроенную структуру.
+			start4 := time.Now()
+			var m embmongo
 			// Formating data of structure Modbus. Заполнение структуры.
+			m.SensorType = "Dallas1"
+			m.SensModbusData = stres
+			// Getting DSN from config. Метод получения DSN из конфига.
+			dsnmgo := make(chan string)
+			go func() {
+				dsnmgo <- ReadMongoConf()
+			}()
+			DsnMongo := <-dsnmgo
+			fmt.Println(m) // For test
+
+			var b bool
+			b, err = embmongo.SendMongo(m, DsnMongo)
+			if err != nil {
+				log.Fatalf("Error of method: %v", err)
+			}
+			fmt.Println("Result of request via struct embedding: ", b)
+			secs4 := time.Since(start4).Seconds()
+			fmt.Printf("%.2fs Request execution time via method SendMongo of struct embedding\n", secs4)
+
+			///////////////////////////////////////
+			// Writting data of modbus to MongoDB via method SendMongo of interface.
+			// Запись данных Modbus в MongoDB через метод SendMongo интерфейса.
+			// Formating data of structure Modbus. Заполнение структуры.
+			// Option two.
 			dm := modbus2mgo.ModbusMongo{
 				SensorType:     "Dallas1",
 				SensModbusData: stres,
 			}
-			start4 := time.Now()
+			start5 := time.Now()
 			// Calling an interface method.
 			// Вызов метода SendMongo интерфейса.
 			var s modbus2mgo.ModbusMonger = dm
-			resreq := s.SendMongo(DsnMongo)
+			resreq, err := s.SendMongo(DsnMongo)
+			if err != nil {
+				log.Fatalf("Error of method: %v", err)
+			}
 			fmt.Println("Result of request via interface method ReadCoils: ", resreq)
-			secs4 := time.Since(start4).Seconds()
-			fmt.Printf("%.2fs Request execution time via method SendMongo of interface\n", secs4)
+			secs5 := time.Since(start5).Seconds()
+			fmt.Printf("%.2fs Request execution time via method SendMongo of interface\n", secs5)
 
 			////////////////////////////////////////////////////////////////////
 			// Read data method GReadCoils via goroutine.
@@ -273,4 +315,19 @@ func intsToString(values []byte) string {
 	}
 	buf.WriteByte(']')
 	return buf.String()
+}
+
+// Func reads DSN from file the ./mongo.conf
+func ReadMongoConf() string {
+	var dsn string
+	rf, err := os.Open("mongo.conf")
+	if err != nil {
+		log.Fatalf("Error open a conf-file mongo: %v", err)
+	}
+	defer rf.Close()
+	input := bufio.NewScanner(rf)
+	for input.Scan() {
+		dsn = input.Text()
+	}
+	return dsn
 }

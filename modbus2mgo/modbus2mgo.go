@@ -9,7 +9,7 @@ import (
 )
 
 type ModbusMonger interface {
-	SendMongo(DsnMongo string) bool
+	SendMongo(DsnMongo string) (bool, error)
 }
 
 type ModbusMongo struct {
@@ -17,10 +17,10 @@ type ModbusMongo struct {
 	SensModbusData string
 }
 
-func (md ModbusMongo) SendMongo(DsnMongo string) bool {
+func (md ModbusMongo) SendMongo(DsnMongo string) (bool, error) {
 	session, err := mgo.Dial(DsnMongo)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Error conn to Mongo: %v", err)
 	}
 	defer session.Close()
 
@@ -33,7 +33,7 @@ func (md ModbusMongo) SendMongo(DsnMongo string) bool {
 	err = c.Find(bson.M{"sensortype": md.SensorType, "datasensor": md.SensModbusData}).One(&chk)
 	if err == nil {
 		log.Println("\nName already is to DB, method of interface", err)
-		return false
+		return false, err
 	}
 	if err != nil {
 		log.Print("\nErr data for write to MongoDB, method of interface: ", err)
@@ -44,5 +44,5 @@ func (md ModbusMongo) SendMongo(DsnMongo string) bool {
 		fmt.Println("Sensor was written via method of interface:", md.SensorType,
 			"\nData of sensor was written via method of interface:", md.SensModbusData)
 	}
-	return true
+	return true, err
 }

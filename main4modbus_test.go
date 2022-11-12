@@ -64,7 +64,7 @@ func TestSplit(t *testing.T) {
 	s, sep := "a:b:c", ":"
 	durl := strings.Split(s, sep)
 	if got, want := len(durl), 3; got != want {
-		t.Errorf("Split (%q%q) возвращает %d слов, а требуется %d", s, sep, got, want)
+		t.Errorf("Split (%q%q) return %d words, but should: %d", s, sep, got, want)
 	}
 }
 
