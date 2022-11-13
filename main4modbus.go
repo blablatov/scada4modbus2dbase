@@ -208,7 +208,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			if len(result) == 0 {
 				log.Println("Panic, internal error, data of answed not got. recover()")
 				panic(p)
-				fmt.Println(err.Error())
 			}
 			stres := intsToString(result) // Call of func for convert to string. Преобразование в строку.
 			// Option one.
@@ -216,16 +215,18 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			// Вызов метода ReadCoils, через встроенную структуру.
 			start4 := time.Now()
 			var m embmongo
+			fmt.Println(m) // For debug
+
 			// Formating data of structure Modbus. Заполнение структуры.
 			m.SensorType = "Dallas1"
 			m.SensModbusData = stres
+
 			// Getting DSN from config. Метод получения DSN из конфига.
 			dsnmgo := make(chan string)
 			go func() {
 				dsnmgo <- ReadMongoConf()
 			}()
 			DsnMongo := <-dsnmgo
-			fmt.Println(m) // For test
 
 			var b bool
 			b, err = embmongo.SendMongo(m, DsnMongo)
@@ -277,8 +278,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			secs2 := time.Since(start2).Seconds()
 			fmt.Printf("%.2fs Request execution time via method GReadCoils of goroutine\n", secs2)
 			// Wait of counter. Ожидание счетчика.
-			wgr.Wait()
-			close(cr)
+			go func() {
+				wgr.Wait()
+				close(cr)
+			}()
 		default:
 			fmt.Println("\nFunction not found")
 		}
@@ -295,6 +298,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		// Wait of counter. Ожидание счетчика.
 		go func() {
 			wgr.Wait()
+			close(cr)
 		}()
 	default:
 		w.WriteHeader(http.StatusNotFound) // 404
